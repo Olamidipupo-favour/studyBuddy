@@ -109,7 +109,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 text-center text-green-700 dark:text-green-200">
-            <p>&copy; 2023 Study Buddy. All rights reserved.</p>
+            <p>&copy; 2024 Study Buddy. All rights reserved.</p>
           </div>
         </div>
       </footer>
