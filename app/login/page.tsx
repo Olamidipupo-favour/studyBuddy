@@ -19,11 +19,13 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import Image from "next/image"
+import { useAuthStore } from "@/lib/auth-store"
 
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const setTokens = useAuthStore((state) => state.setTokens)
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -53,6 +55,12 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
+        // Set mock tokens for development
+        setTokens({
+          accessToken: "mock-access-token",
+          refreshToken: "mock-refresh-token"
+        })
+
         toast({
           title: "Success",
           description: "Welcome back!",
