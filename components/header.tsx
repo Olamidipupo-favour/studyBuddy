@@ -3,64 +3,63 @@
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { Moon, Sun, User, LogOut, BookOpen, MessageCircle } from 'lucide-react'
-import { useAppStore } from '@/lib/store'
+import { Moon, Sun, User, LogOut, BookOpen } from 'lucide-react'
+import { useSession, signOut } from "next-auth/react"
+import { useToast } from "@/hooks/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAuthStore } from '@/lib/auth-store'
 
 export default function Header() {
   const { theme, setTheme } = useTheme()
-  const user = useAppStore((state) => state.user)
-  const setUser = useAppStore((state) => state.setUser)
+  const { data: session } = useSession()
+  const { toast } = useToast()
+  const clearTokens = useAuthStore((state) => state.clearTokens)
 
-  const handleLogout = () => {
-    setUser(null)
-    // Add any additional logout logic here
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    clearTokens()
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    })
   }
 
   return (
-    <header className="bg-green-100 dark:bg-green-800 py-4 shadow-md">
+    <header className="bg-white dark:bg-gray-800 py-4 shadow-md">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold text-green-800 dark:text-green-100 flex items-center">
+        <Link href="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center">
           <BookOpen className="mr-2" />
           Study Buddy
         </Link>
         <nav>
           <ul className="flex space-x-4 items-center">
-            {user && (
+            {session?.user && (
               <>
                 <li>
-                  <Link href="/subjects" className="text-green-800 dark:text-green-100 hover:text-green-600 dark:hover:text-green-300 flex items-center">
-                    <BookOpen className="mr-1" size={18} />
-                    Subjects
-                  </Link>
-                </li>
-                <li>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <User className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleLogout}
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </Button>
                 </li>
               </>
             )}
-            {!user && (
+            {!session?.user && (
               <li>
-                <Link href="/login" className="text-green-800 dark:text-green-100 hover:text-green-600 dark:hover:text-green-300 flex items-center">
-                  <User className="mr-1" size={18} />
-                  Login
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <User size={16} />
+                    Login
+                  </Button>
                 </Link>
               </li>
             )}

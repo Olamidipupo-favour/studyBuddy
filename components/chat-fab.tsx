@@ -1,55 +1,44 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { MessageCircle, X } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { MessageCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useAuthStore } from "@/lib/auth-store"
+import { useEffect, useState } from "react"
 
 export default function ChatFAB() {
-  const [isOpen, setIsOpen] = useState(false)
+  const { data: session, status } = useSession()
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    setIsAuthenticated(!!session && !!accessToken && status === "authenticated")
+  }, [session, accessToken, status])
+
+  if (!isAuthenticated) return null
 
   return (
-    <>
+    <AnimatePresence>
       <motion.div
-        className="fixed bottom-4 right-4 z-50"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        className="fixed bottom-6 right-6 z-50"
       >
         <Button
+          asChild
           size="lg"
-          className="rounded-full w-16 h-16"
-          onClick={() => setIsOpen(!isOpen)}
+          className="rounded-full w-14 h-14 shadow-lg bg-indigo-600 hover:bg-indigo-700"
         >
-          {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
+          <Link href="/chat">
+            <MessageCircle className="h-6 w-6 text-white" />
+            <span className="sr-only">Open Chat</span>
+          </Link>
         </Button>
       </motion.div>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="fixed bottom-24 right-4 w-80 h-96 bg-white dark:bg-green-800 rounded-lg shadow-lg z-40 overflow-hidden"
-            initial={{ opacity: 0, y: 50, scale: 0.3 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-          >
-            <div className="h-full flex flex-col">
-              <div className="bg-green-100 dark:bg-green-700 p-4">
-                <h2 className="text-lg font-semibold text-green-800 dark:text-green-100">Chat</h2>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Chat messages will go here */}
-              </div>
-              <div className="p-4 border-t border-green-200 dark:border-green-600">
-                <input
-                  type="text"
-                  placeholder="Type your message..."
-                  className="w-full px-3 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-700 dark:text-green-100"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    </AnimatePresence>
   )
 }
 
