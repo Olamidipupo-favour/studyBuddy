@@ -1,115 +1,283 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { BookOpen, Users, Brain, ArrowRight } from 'lucide-react'
+import { ArrowRight, BookOpen, Users, Brain, Star, Github, Twitter, Linkedin } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { features, testimonials } from '@/app/data/content'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5
+    }
+  }
+}
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="flex-grow">
-        <div className="flex flex-col items-center justify-center py-12">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1 className="text-4xl font-bold text-green-800 dark:text-green-100 mb-4 text-center">Welcome to Study Buddy</h1>
-            <p className="text-xl text-green-700 dark:text-green-200 mb-8 text-center">Your minimalist and immersive study assistant</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <motion.div
-              className="bg-white dark:bg-green-800 p-6 rounded-lg shadow-md"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <BookOpen className="w-12 h-12 text-green-600 dark:text-green-300 mb-4 mx-auto" />
-              <h2 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-2 text-center">Organize Subjects</h2>
-              <p className="text-green-700 dark:text-green-200 text-center">Keep all your study materials organized by subject for easy access and review.</p>
-            </motion.div>
-            <motion.div
-              className="bg-white dark:bg-green-800 p-6 rounded-lg shadow-md"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Users className="w-12 h-12 text-green-600 dark:text-green-300 mb-4 mx-auto" />
-              <h2 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-2 text-center">Collaborate</h2>
-              <p className="text-green-700 dark:text-green-200 text-center">Connect with classmates and study groups to share knowledge and resources.</p>
-            </motion.div>
-            <motion.div
-              className="bg-white dark:bg-green-800 p-6 rounded-lg shadow-md"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Brain className="w-12 h-12 text-green-600 dark:text-green-300 mb-4 mx-auto" />
-              <h2 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-2 text-center">AI-Powered Assistance</h2>
-              <p className="text-green-700 dark:text-green-200 text-center">Get help from our AI study buddy for quick answers and study tips.</p>
-            </motion.div>
-          </div>
-          <div className="flex space-x-4 mb-12">
-            <Button asChild>
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/signup">Sign Up</Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Call to Action Section */}
-        <motion.section
-          className="bg-green-600 dark:bg-green-700 py-16"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="relative py-20 px-4 overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-4xl mx-auto text-center relative z-10"
         >
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to Boost Your Study Game?</h2>
-            <p className="text-xl text-green-100 mb-8">Join Study Buddy today and experience a new way of learning!</p>
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/signup" className="flex items-center">
-                Get Started <ArrowRight className="ml-2" />
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1 }}
+            className="absolute inset-0 -z-10"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl" />
+          </motion.div>
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+            Your Intelligent
+            <motion.span
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="text-indigo-600 dark:text-indigo-400"
+            > Study Assistant
+            </motion.span>
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            Enhance your learning journey with AI-powered study tools, personalized plans, and collaborative features.
+          </p>
+          <motion.div 
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 text-lg">
+                <Link href="/signup">
+                  Get Started
+                  <ArrowRight className="ml-2" />
+                </Link>
+              </Button>
+            </motion.div>
+            <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button asChild variant="outline" className="px-8 py-6 text-lg">
+                <Link href="/login">
+                  Log In
+                </Link>
+              </Button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 bg-gray-50 dark:bg-gray-800/50">
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+          >
+            Everything you need to excel
+          </motion.h2>
+          <motion.div 
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                variants={itemVariants}
+                whileHover={{ y: -5 }}
+                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg group"
+              >
+                <div className="relative h-40 mb-6 overflow-hidden rounded-md">
+                  <Image
+                    src={feature.image}
+                    alt={feature.title}
+                    fill
+                    className="object-cover transition-transform group-hover:scale-110"
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4dHRsdHR4dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIRshIRshHRsdIR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                  />
+                </div>
+                <div className="text-indigo-600 dark:text-indigo-400 mb-4">
+                  <feature.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+          >
+            What our users say
+          </motion.h2>
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={testimonial.author}
+                variants={itemVariants}
+                whileHover={{ y: -5 }}
+                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg"
+              >
+                <div className="flex items-center mb-4">
+                  <div className="relative w-12 h-12 mr-4">
+                    <Image
+                      src={testimonial.avatar}
+                      alt={testimonial.author}
+                      fill
+                      className="rounded-full object-cover"
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4dHRsdHR4dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIRshIRshHRsdIR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                    />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {testimonial.author}
+                    </p>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      {testimonial.role}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300">
+                  "{testimonial.quote}"
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-indigo-600 dark:bg-indigo-700 relative overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="absolute inset-0 -z-10"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-50" />
+          <div className="absolute inset-0 bg-grid-white/10" style={{ backgroundSize: '20px 20px' }} />
+        </motion.div>
+        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-bold text-white mb-4"
+          >
+            Ready to transform your study experience?
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-indigo-100 mb-8"
+          >
+            Join thousands of students who are already studying smarter with Study Buddy.
+          </motion.p>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button asChild className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 py-6 text-lg">
+              <Link href="/signup">
+                Get Started Now
+                <ArrowRight className="ml-2" />
               </Link>
             </Button>
-          </div>
-        </motion.section>
-      </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="bg-green-100 dark:bg-green-800 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap justify-between">
-            <div className="w-full md:w-1/3 mb-6 md:mb-0">
-              <h3 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-4">Study Buddy</h3>
-              <p className="text-green-700 dark:text-green-200">Empowering students to achieve their academic goals through innovative study tools and collaboration.</p>
-            </div>
-            <div className="w-full md:w-1/3 mb-6 md:mb-0">
-              <h3 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-4">Quick Links</h3>
-              <ul className="space-y-2">
-                <li><Link href="/about" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">About Us</Link></li>
-                <li><Link href="/features" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">Features</Link></li>
-                <li><Link href="/pricing" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">Pricing</Link></li>
-                <li><Link href="/contact" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">Contact</Link></li>
-              </ul>
-            </div>
-            <div className="w-full md:w-1/3">
-              <h3 className="text-xl font-semibold text-green-800 dark:text-green-100 mb-4">Connect With Us</h3>
+      <footer className="bg-gray-900 text-gray-300">
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Study Buddy</h3>
+              <p className="text-sm">Making learning smarter and more effective.</p>
               <div className="flex space-x-4">
-                <a href="#" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" /></svg>
-                </a>
-                <a href="#" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd" /></svg>
-                </a>
-                <a href="#" className="text-green-700 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
-                </a>
+                <Link href="https://github.com" className="hover:text-white">
+                  <Github size={20} />
+                </Link>
+                <Link href="https://twitter.com" className="hover:text-white">
+                  <Twitter size={20} />
+                </Link>
+                <Link href="https://linkedin.com" className="hover:text-white">
+                  <Linkedin size={20} />
+                </Link>
               </div>
             </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="#" className="hover:text-white">Features</Link></li>
+                <li><Link href="#" className="hover:text-white">Pricing</Link></li>
+                <li><Link href="#" className="hover:text-white">FAQ</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="#" className="hover:text-white">About</Link></li>
+                <li><Link href="#" className="hover:text-white">Blog</Link></li>
+                <li><Link href="#" className="hover:text-white">Careers</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="#" className="hover:text-white">Privacy</Link></li>
+                <li><Link href="#" className="hover:text-white">Terms</Link></li>
+                <li><Link href="#" className="hover:text-white">Cookie Policy</Link></li>
+              </ul>
+            </div>
           </div>
-          <div className="mt-8 text-center text-green-700 dark:text-green-200">
-            <p>&copy; 2024 Study Buddy. All rights reserved.</p>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-sm text-center">
+            <p>&copy; {new Date().getFullYear()} Study Buddy. All rights reserved.</p>
           </div>
         </div>
       </footer>
