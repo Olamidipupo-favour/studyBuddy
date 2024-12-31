@@ -1,4 +1,4 @@
-import NextAuth, { Session, AuthError } from "next-auth"
+import NextAuth, { Session, NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 
 // Mock user data
@@ -10,7 +10,7 @@ const MOCK_USERS = [
 
 const IS_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true'
 
-const authOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -20,7 +20,7 @@ const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new AuthError("Missing credentials")
+          throw new Error("Missing credentials")
         }
 
         try {
@@ -73,7 +73,7 @@ const authOptions = {
     error: '/login',
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
   debug: process.env.NODE_ENV === 'development',
 }

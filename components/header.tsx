@@ -12,14 +12,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAuthStore } from '@/lib/auth-store'
 
 export default function Header() {
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
   const { toast } = useToast()
+  const clearTokens = useAuthStore((state) => state.clearTokens)
 
   const handleLogout = async () => {
     await signOut({ redirect: false })
+    clearTokens()
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",
