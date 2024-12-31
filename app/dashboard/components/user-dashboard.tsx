@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, User, Settings as SettingsIcon, CreditCard, Mail, Key, Bell, Shield, Globe, Palette } from "lucide-react"
+import { Plus, User, Settings as SettingsIcon, CreditCard, Mail, Key, Bell, Shield, Globe, Palette, Trash2 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type Subject = {
   id: string
@@ -38,6 +49,7 @@ const mockSubjects: Subject[] = [
 ]
 
 export function UserDashboard({ user }: { user: any }) {
+  const router = useRouter()
   const { quote, isLoading } = useQuote()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -54,6 +66,7 @@ export function UserDashboard({ user }: { user: any }) {
     name: "",
     description: ""
   })
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null)
 
   const handleProfileUpdate = async () => {
     setIsUpdatingProfile(true)
@@ -137,6 +150,31 @@ export function UserDashboard({ user }: { user: any }) {
     }
   }
 
+  const handleSubjectClick = (subjectId: string) => {
+    router.push(`/subjects/${subjectId}`)
+  }
+
+  const handleDeleteSubject = async (subject: Subject) => {
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      setSubjects(prev => prev.filter(s => s.id !== subject.id))
+      setSubjectToDelete(null)
+
+      toast({
+        title: "Success",
+        description: "Subject deleted successfully"
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete subject",
+        variant: "destructive"
+      })
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Add Subject Modal */}
@@ -192,6 +230,28 @@ export function UserDashboard({ user }: { user: any }) {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Subject Confirmation */}
+      <AlertDialog open={!!subjectToDelete} onOpenChange={(open) => !open && setSubjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the subject "{subjectToDelete?.name}" and all its contents.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => subjectToDelete && handleDeleteSubject(subjectToDelete)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Inspirational Quote */}
       <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
         <CardContent className="py-6">
@@ -223,12 +283,20 @@ export function UserDashboard({ user }: { user: any }) {
             {subjects.map((subject) => (
               <Card 
                 key={subject.id} 
-                className="hover:shadow-lg transition-shadow aspect-square flex flex-col cursor-pointer"
-                onClick={() => toast({
-                  title: "Coming Soon",
-                  description: "Subject details will be available soon.",
-                })}
+                className="hover:shadow-lg transition-shadow aspect-square flex flex-col relative group cursor-pointer"
+                onClick={() => handleSubjectClick(subject.id)}
               >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 z-10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSubjectToDelete(subject)
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <CardHeader className="flex-1">
                   <CardTitle className="text-xl">{subject.name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">{subject.description}</p>
