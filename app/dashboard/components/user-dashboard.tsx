@@ -13,6 +13,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 
 type Subject = {
   id: string
@@ -32,10 +42,17 @@ export function UserDashboard({ user }: { user: any }) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  const [isAddingSubject, setIsAddingSubject] = useState(false)
+  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false)
+  const [subjects, setSubjects] = useState<Subject[]>(mockSubjects)
   const [profileData, setProfileData] = useState({
     name: user.name,
     email: user.email,
     bio: "Student"
+  })
+  const [newSubject, setNewSubject] = useState({
+    name: "",
+    description: ""
   })
 
   const handleProfileUpdate = async () => {
@@ -59,6 +76,49 @@ export function UserDashboard({ user }: { user: any }) {
     }
   }
 
+  const handleAddSubject = async () => {
+    if (!newSubject.name || !newSubject.description) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsAddingSubject(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Create new subject with a random ID and 0 progress
+      const subject: Subject = {
+        id: Math.random().toString(36).substring(7),
+        name: newSubject.name,
+        description: newSubject.description,
+        progress: 0
+      }
+      
+      // Add the new subject to the list
+      setSubjects(prev => [...prev, subject])
+      
+      toast({
+        title: "Subject Added",
+        description: "New subject has been successfully added.",
+      })
+      setShowAddSubjectModal(false)
+      setNewSubject({ name: "", description: "" })
+    } catch (error) {
+      toast({
+        title: "Failed to Add Subject",
+        description: "An error occurred while adding the subject. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsAddingSubject(false)
+    }
+  }
+
   const handleProfilePictureClick = () => {
     fileInputRef.current?.click()
   }
@@ -79,6 +139,59 @@ export function UserDashboard({ user }: { user: any }) {
 
   return (
     <div className="space-y-8">
+      {/* Add Subject Modal */}
+      <Dialog open={showAddSubjectModal} onOpenChange={setShowAddSubjectModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Subject</DialogTitle>
+            <DialogDescription>
+              Create a new subject to start tracking your progress.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="subject-name">Subject Name</Label>
+              <Input
+                id="subject-name"
+                placeholder="e.g., Mathematics"
+                value={newSubject.name}
+                onChange={(e) => setNewSubject(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="subject-description">Description</Label>
+              <Textarea
+                id="subject-description"
+                placeholder="Brief description of the subject..."
+                value={newSubject.description}
+                onChange={(e) => setNewSubject(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddSubjectModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSubject}
+              disabled={isAddingSubject}
+            >
+              {isAddingSubject ? (
+                <>
+                  <LoadingSpinner size={16} className="mr-2" />
+                  Adding...
+                </>
+              ) : (
+                'Add Subject'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Inspirational Quote */}
       <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
         <CardContent className="py-6">
@@ -107,7 +220,7 @@ export function UserDashboard({ user }: { user: any }) {
 
         <TabsContent value="subjects" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockSubjects.map((subject) => (
+            {subjects.map((subject) => (
               <Card 
                 key={subject.id} 
                 className="hover:shadow-lg transition-shadow aspect-square flex flex-col cursor-pointer"
@@ -139,10 +252,7 @@ export function UserDashboard({ user }: { user: any }) {
 
             <Card 
               className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer aspect-square flex items-center justify-center group"
-              onClick={() => toast({
-                title: "Coming Soon",
-                description: "Adding new subjects will be available soon.",
-              })}
+              onClick={() => setShowAddSubjectModal(true)}
             >
               <Plus className="h-12 w-12 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
             </Card>
