@@ -10,11 +10,18 @@ import { Send, User, Bot, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 import { backendUrl } from '@/lib/config'
 
+interface Message {
+  id: number
+  text: string
+  sender: 'user' | 'bot'
+  timestamp: Date
+}
+
 export default function ChatPage() {
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const messagesEndRef = useRef(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAppStore()
   const router = useRouter()
 
@@ -30,7 +37,7 @@ export default function ChatPage() {
 
   const handleSendMessage = async () => {
     if (newMessage.trim()) {
-      const userMessage = { id: Date.now(), text: newMessage, sender: 'user', timestamp: new Date() }
+      const userMessage: Message = { id: Date.now(), text: newMessage, sender: 'user', timestamp: new Date() }
       setMessages(prevMessages => [...prevMessages, userMessage])
       setNewMessage('')
       setIsTyping(true)
@@ -42,10 +49,12 @@ export default function ChatPage() {
           body: JSON.stringify({ message: newMessage }),
         })
         const data = await response.json()
-        setMessages(prevMessages => [...prevMessages, { id: Date.now(), text: data.message, sender: 'bot', timestamp: new Date() }])
+        const botMessage: Message = { id: Date.now(), text: data.message, sender: 'bot', timestamp: new Date() }
+        setMessages(prevMessages => [...prevMessages, botMessage])
       } catch (error) {
         console.error('Error sending message:', error)
-        setMessages(prevMessages => [...prevMessages, { id: Date.now(), text: "Sorry, I couldn't process your request. Please try again.", sender: 'bot', timestamp: new Date() }])
+        const errorMessage: Message = { id: Date.now(), text: "Sorry, I couldn't process your request. Please try again.", sender: 'bot', timestamp: new Date() }
+        setMessages(prevMessages => [...prevMessages, errorMessage])
       } finally {
         setIsTyping(false)
       }
