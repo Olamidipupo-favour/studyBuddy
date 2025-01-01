@@ -17,8 +17,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { signIn } from "next-auth/react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SignupPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,21 +41,53 @@ export default function SignupPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
       })
 
       const responseData = await response.json()
 
       if (!response.ok) {
-        throw new Error(responseData.message || 'Registration failed')
+        const message = responseData.message || 'Registration failed'
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        })
+        throw new Error(message)
       }
 
-      router.push('/login?registered=true')
+      if (responseData.success) {
+        toast({
+          title: "Success",
+          description: "Registration successful! Please log in.",
+        })
+        router.push('/login?registered=true')
+      } else {
+        const message = responseData.message || 'Registration failed'
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        })
+        throw new Error(message)
+      }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      const message = error instanceof Error ? error.message : 'An error occurred'
+      setError(message)
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }

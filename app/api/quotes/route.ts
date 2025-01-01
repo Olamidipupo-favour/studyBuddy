@@ -29,7 +29,15 @@ const quotes = [
 ]
 
 export async function GET() {
-  // Randomly select a quote
-  const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
-  return NextResponse.json(randomQuote)
+  let data;
+  const response = await fetch(`http://api.quotable.io/quotes/random?tags=education|anatomy|physiology|medicine|biochemistry&limit=1`
+  ).then(res => res.json()).then(data => {
+    return data;
+  })
+  const randomQuote = {
+    id:  response[0].id,
+    text: response[0].content,
+    author: response[0].author
+   }
+   return NextResponse.json(randomQuote)
 } 

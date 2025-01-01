@@ -1,22 +1,31 @@
-import NextAuth, { Session, NextAuthOptions } from "next-auth"
+import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { JWT } from "next-auth/jwt"
 
-// Mock user data
-const MOCK_USERS = [
-  { id: '1', email: 'student@student.edu', password: 'password123', role: 'student', name: 'Student User' },
-  { id: '2', email: 'teacher@teacher.edu', password: 'password123', role: 'teacher', name: 'Teacher User' },
-  { id: '3', email: 'admin@admin.edu', password: 'password123', role: 'admin', name: 'Admin User' },
-]
+interface BackendResponse {
+  success: boolean
+  user?: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
+  tokens?: {
+    accessToken: string
+    refreshToken: string
+  }
+  message?: string
+}
 
-const IS_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true'
-
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        name: { label: "Name", type: "text" },
+        isSignup: { label: "Is Signup", type: "boolean" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -24,60 +33,94 @@ const authOptions: NextAuthOptions = {
         }
 
         try {
-          if (IS_MOCK_AUTH) {
-            const user = MOCK_USERS.find(u => 
-              u.email === credentials.email && 
-              u.password === credentials.password
-            )
+          const isSignup = credentials.isSignup === 'true'
+          
+          // For signup, we don't authenticate immediately
+          if (isSignup) {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: credentials.email,
+                password: credentials.password,
+                name: credentials.name,
+                role: 'student'
+              }),
+            })
 
-            if (!user) {
-              return null
+            const data = await response.json()
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || "Signup failed")
             }
 
-            const { password: _, ...userWithoutPassword } = user
-            return {
-              ...userWithoutPassword,
-              email: userWithoutPassword.email,
-              name: userWithoutPassword.name,
-              id: userWithoutPassword.id,
-            }
-          } else {
-            // Real authentication logic here
+            // Return null for signup to prevent automatic login
             return null
           }
+
+          // Login flow
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          })
+
+          const data: BackendResponse = await response.json()
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || "Invalid credentials")
+          }
+
+          if (!data.user || !data.tokens) {
+            throw new Error("Invalid response from server")
+          }
+
+          return {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            accessToken: data.tokens.accessToken,
+            refreshToken: data.tokens.refreshToken,
+          }
         } catch (error) {
-          console.error('Auth error:', error)
-          return null
+          console.error("Auth error:", error)
+          throw error // Propagate the error
         }
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any, user: any }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
         token.id = user.id
+        token.role = user.role
+        token.accessToken = user.accessToken
+        token.refreshToken = user.refreshToken
       }
       return token
     },
-    async session({ session, token }: { session: Session, token: any }) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.role = token.role as string
         session.user.id = token.id as string
+        session.user.role = token.role as string
+        session.user.accessToken = token.accessToken as string
+        session.user.refreshToken = token.refreshToken as string
       }
       return session
-    }
+    },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
   session: {
-    strategy: "jwt" as const,
+    strategy: "jwt",
   },
-  debug: process.env.NODE_ENV === 'development',
 }
 
 const handler = NextAuth(authOptions)
-
 export { handler as GET, handler as POST } 

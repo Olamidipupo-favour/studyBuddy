@@ -1,11 +1,11 @@
 'use client'
 
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, type LoginFormData } from "@/lib/schemas"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,13 +19,26 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import Image from "next/image"
-import { useAuthStore } from "@/lib/auth-store"
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const setTokens = useAuthStore((state) => state.setTokens)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Show success message if redirected from signup
+  const justRegistered = searchParams.get('registered') === 'true'
+
+  useEffect(() => {
+    if (justRegistered) {
+      toast({
+        title: "Registration successful!",
+        description: "Please log in with your new account.",
+        variant: "default",
+      })
+    }
+  }, [justRegistered, toast])
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -37,7 +50,8 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
-    
+    setError(null)
+
     try {
       const result = await signIn("credentials", {
         email: data.email,
@@ -47,32 +61,35 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast({
+          title: "Error",
+          description: "Invalid credentials",
           variant: "destructive",
-          title: "Authentication failed",
-          description: "Invalid email or password",
         })
-        return
+        throw new Error('Invalid credentials')
       }
 
       if (result?.ok) {
-        // Set mock tokens for development
-        setTokens({
-          accessToken: "mock-access-token",
-          refreshToken: "mock-refresh-token"
-        })
-
         toast({
           title: "Success",
-          description: "Welcome back!",
+          description: "Successfully logged in",
         })
         router.push('/dashboard')
         router.refresh()
+      } else {
+        toast({
+          title: "Error",
+          description: "Login failed",
+          variant: "destructive",
+        })
+        throw new Error('Login failed')
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred'
+      setError(message)
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "An unexpected error occurred",
+        description: message,
+        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
