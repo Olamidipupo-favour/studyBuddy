@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useSession } from "next-auth/react"
-import { useAuthStore } from "@/lib/auth-store"
 import { cn } from "@/lib/utils"
 import {
   Drawer,
@@ -32,6 +31,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { handleUnauthorized } from "@/lib/auth-utils"
+import { fetchWithAuth } from "@/lib/fetch-interceptor"
 
 type Message = {
   id: string
@@ -67,10 +68,18 @@ export function FAB() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const { data: session } = useSession()
-  const accessToken = useAuthStore((state) => state.accessToken)
-
+  const { data: session, status } = useSession()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  // Don't render anything while checking authentication
+  if (status === 'loading') {
+    return null
+  }
+
+  // Only render if we have a valid session with an access token
+  if (!session?.user?.accessToken) {
+    return null
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -80,50 +89,126 @@ export function FAB() {
     scrollToBottom()
   }, [messages])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
     
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       content: message,
       sender: 'user',
       timestamp: new Date()
     }
     
-    setMessages(prev => [...prev, newMessage])
+    setMessages(prev => [...prev, userMessage])
     setMessage("")
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetchWithAuth('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage.content })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
+
+      const data = await response.json()
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm processing your message...",
+        content: data.message,
         sender: 'ai',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, aiResponse])
-    }, 1000)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Unauthorized') {
+        return // Already handled by fetchWithAuth
+      }
+      console.error('Chat error:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm sorry, I couldn't process your message. Please try again.",
+        sender: 'ai',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    }
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Handle file upload logic here
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: "Sent an attachment",
-      sender: 'user',
-      timestamp: new Date(),
-      attachment: {
-        type: file.type,
-        url: URL.createObjectURL(file),
-        name: file.name
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetchWithAuth('/api/chat/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload file')
       }
+
+      const data = await response.json()
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: "Sent an attachment",
+        sender: 'user',
+        timestamp: new Date(),
+        attachment: {
+          type: file.type,
+          url: data.url,
+          name: file.name
+        }
+      }
+      
+      setMessages(prev => [...prev, userMessage])
+
+      // Send a chat message about the uploaded file
+      const fileMessage = await fetchWithAuth('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: `I've uploaded a file: ${file.name}. Can you help me understand its contents?`,
+          attachmentUrl: data.url 
+        })
+      })
+
+      if (!fileMessage.ok) {
+        throw new Error('Failed to process file message')
+      }
+
+      const messageData = await fileMessage.json()
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: messageData.message,
+        sender: 'ai',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, aiResponse])
+
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Unauthorized') {
+        return // Already handled by fetchWithAuth
+      }
+      console.error('File upload error:', error)
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: "Failed to upload file. Please try again.",
+        sender: 'ai',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
     }
-    
-    setMessages(prev => [...prev, newMessage])
   }
 
   const handleVoiceRecord = () => {
@@ -148,11 +233,6 @@ export function FAB() {
       e.preventDefault()
       handleSubmit(e)
     }
-  }
-
-  // Don't render anything if not authenticated
-  if (!session?.user || !accessToken) {
-    return null
   }
 
   return (

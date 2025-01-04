@@ -43,7 +43,6 @@ export const authOptions: NextAuthOptions = {
                 email: credentials.email,
                 password: credentials.password,
                 name: credentials.name,
-                role: 'student'
               }),
             })
 

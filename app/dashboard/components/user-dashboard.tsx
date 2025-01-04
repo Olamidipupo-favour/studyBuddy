@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
@@ -56,7 +56,7 @@ export function UserDashboard({ user }: { user: any }) {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [isAddingSubject, setIsAddingSubject] = useState(false)
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false)
-  const [subjects, setSubjects] = useState<Subject[]>(mockSubjects)
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [profileData, setProfileData] = useState({
     name: user.name,
     email: user.email,
@@ -67,6 +67,30 @@ export function UserDashboard({ user }: { user: any }) {
     description: ""
   })
   const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null)
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(true)
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const response = await fetch('/api/subjects')
+        if (!response.ok) {
+          throw new Error('Failed to fetch subjects')
+        }
+        const data = await response.json()
+        setSubjects(data.subjects || [])
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load subjects",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoadingSubjects(false)
+      }
+    }
+
+    fetchSubjects()
+  }, [])
 
   const handleProfileUpdate = async () => {
     setIsUpdatingProfile(true)
@@ -101,19 +125,18 @@ export function UserDashboard({ user }: { user: any }) {
 
     setIsAddingSubject(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Create new subject with a random ID and 0 progress
-      const subject: Subject = {
-        id: Math.random().toString(36).substring(7),
-        name: newSubject.name,
-        description: newSubject.description,
-        progress: 0
+      const response = await fetch('/api/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSubject)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add subject')
       }
-      
-      // Add the new subject to the list
-      setSubjects(prev => [...prev, subject])
+
+      const data = await response.json()
+      setSubjects(prev => [...prev, data.subject])
       
       toast({
         title: "Subject Added",
@@ -136,16 +159,38 @@ export function UserDashboard({ user }: { user: any }) {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Here you would typically upload the file to your storage
-      // For now, we'll just create a local URL
-      const imageUrl = URL.createObjectURL(file)
-      // Update avatar image source
-      const avatarImg = document.querySelector('#user-avatar') as HTMLImageElement
-      if (avatarImg) {
-        avatarImg.src = imageUrl
+      try {
+        const formData = new FormData()
+        formData.append('avatar', file)
+
+        const response = await fetch('/api/user/avatar', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to upload avatar')
+        }
+
+        const data = await response.json()
+        const avatarImg = document.querySelector('#user-avatar') as HTMLImageElement
+        if (avatarImg) {
+          avatarImg.src = data.imageUrl
+        }
+
+        toast({
+          title: "Success",
+          description: "Profile picture updated successfully"
+        })
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update profile picture",
+          variant: "destructive"
+        })
       }
     }
   }
@@ -156,9 +201,14 @@ export function UserDashboard({ user }: { user: any }) {
 
   const handleDeleteSubject = async (subject: Subject) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const response = await fetch(`/api/subjects/${subject.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete subject')
+      }
+
       setSubjects(prev => prev.filter(s => s.id !== subject.id))
       setSubjectToDelete(null)
 
@@ -279,37 +329,55 @@ export function UserDashboard({ user }: { user: any }) {
         </TabsList>
 
         <TabsContent value="subjects" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subjects.map((subject) => (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Your Subjects</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {isLoadingSubjects ? (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardHeader>
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              ) : subjects.length > 0 ? (
+                <>
+                  {subjects.map((subject) => (
               <Card 
                 key={subject.id} 
-                className="hover:shadow-lg transition-shadow aspect-square flex flex-col relative group cursor-pointer"
-                onClick={() => handleSubjectClick(subject.id)}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 z-10"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSubjectToDelete(subject)
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                      className="hover:shadow-lg transition-shadow aspect-square flex flex-col relative group cursor-pointer"
+                      onClick={() => handleSubjectClick(subject.id)}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSubjectToDelete(subject)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                 <CardHeader className="flex-1">
                   <CardTitle className="text-xl">{subject.name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">{subject.description}</p>
                 </CardHeader>
                 <CardContent className="pb-6">
-                  <div className="space-y-2 opacity-50">
+                        <div className="space-y-2 opacity-50">
                     <div className="flex justify-between text-sm">
                       <span>Progress</span>
                       <span>{subject.progress}%</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full">
                       <div 
-                        className="h-full bg-gray-400 rounded-full transition-all duration-300"
+                              className="h-full bg-gray-400 rounded-full transition-all duration-300"
                         style={{ width: `${subject.progress}%` }}
                       />
                     </div>
@@ -317,13 +385,30 @@ export function UserDashboard({ user }: { user: any }) {
                 </CardContent>
               </Card>
             ))}
-
-            <Card 
-              className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer aspect-square flex items-center justify-center group"
-              onClick={() => setShowAddSubjectModal(true)}
-            >
+                  <Card 
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer aspect-square flex items-center justify-center group"
+                    onClick={() => setShowAddSubjectModal(true)}
+                  >
               <Plus className="h-12 w-12 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
             </Card>
+                </>
+              ) : (
+                <div className="col-span-3">
+                  <Card>
+                    <CardContent className="p-6 text-center text-gray-500">
+                      <p>No subjects found. Start by adding a new subject.</p>
+                      <Button 
+                        variant="default"
+                        className="mt-4"
+                        onClick={() => setShowAddSubjectModal(true)}
+                      >
+                        Add Subject
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
           </div>
         </TabsContent>
 

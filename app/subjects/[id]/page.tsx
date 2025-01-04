@@ -119,26 +119,52 @@ export default function SubjectDetailsPage() {
   const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null)
 
   useEffect(() => {
-    // Simulate API call to fetch subject details
     const fetchSubject = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setSubject({
-          id: params.id as string,
-          name: "Mathematics",
-          description: "Advanced Calculus",
-          progress: 65,
-          goals: []
-        })
+        const response = await fetch(`/api/subjects/${params.id}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch subject')
+        }
+        const data = await response.json()
+        setSubject(data.subject)
       } catch (error) {
         console.error("Failed to fetch subject details:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load subject details",
+          variant: "destructive"
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchSubject()
-  }, [params.id])
+  }, [params.id, toast])
+
+  useEffect(() => {
+    const fetchFolders = async () => {
+      try {
+        const response = await fetch(`/api/subjects/${params.id}/folders`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch folders')
+        }
+        const data = await response.json()
+        setFolders(data.folders)
+      } catch (error) {
+        console.error("Failed to fetch folders:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load folders",
+          variant: "destructive"
+        })
+      }
+    }
+
+    if (!isLoading && subject) {
+      fetchFolders()
+    }
+  }, [params.id, isLoading, subject, toast])
 
   const handleStartStudying = () => {
     router.push(`/subjects/${params.id}/study`)
@@ -159,21 +185,26 @@ export default function SubjectDetailsPage() {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      const resource: Resource = {
-        id: Math.random().toString(36).substring(7),
-        name: newResource.name,
-        description: newResource.description,
-        type: newResource.file?.type || 'unknown',
-        url: '#',
-        createdAt: new Date().toISOString()
+      const formData = new FormData()
+      formData.append('name', newResource.name)
+      formData.append('description', newResource.description)
+      if (newResource.file) {
+        formData.append('file', newResource.file)
       }
 
+      const response = await fetch(`/api/subjects/${params.id}/folders/${selectedFolder.id}/resources`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add resource')
+      }
+
+      const data = await response.json()
       setFolders(prev => prev.map(folder => 
         folder.id === selectedFolder.id 
-          ? { ...folder, items: [...folder.items, resource] }
+          ? { ...folder, items: [...folder.items, data.resource] }
           : folder
       ))
 
@@ -205,17 +236,20 @@ export default function SubjectDetailsPage() {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch(`/api/subjects/${params.id}/folders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newFolder)
+      })
 
-      const folder: Folder = {
-        id: Math.random().toString(36).substring(7),
-        name: newFolder.name,
-        type: newFolder.type,
-        items: []
+      if (!response.ok) {
+        throw new Error('Failed to create folder')
       }
 
-      setFolders(prev => [...prev, folder])
+      const data = await response.json()
+      setFolders(prev => [...prev, data.folder])
       setShowNewFolderModal(false)
       setNewFolder({ name: "", type: "Notes" })
 
@@ -247,19 +281,22 @@ export default function SubjectDetailsPage() {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch(`/api/subjects/${params.id}/goals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newGoal)
+      })
 
-      const goal: Goal = {
-        id: Math.random().toString(36).substring(7),
-        title: newGoal.title,
-        dueDate: newGoal.dueDate,
-        completed: false
+      if (!response.ok) {
+        throw new Error('Failed to add goal')
       }
 
+      const data = await response.json()
       setSubject(prev => prev ? {
         ...prev,
-        goals: [...(prev.goals || []), goal]
+        goals: [...(prev.goals || []), data.goal]
       } : null)
 
       setShowNewGoalModal(false)
@@ -280,8 +317,13 @@ export default function SubjectDetailsPage() {
 
   const handleDeleteFolder = async (folder: Folder) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch(`/api/subjects/${params.id}/folders/${folder.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete folder')
+      }
 
       setFolders(prev => prev.filter(f => f.id !== folder.id))
       setFolderToDelete(null)
