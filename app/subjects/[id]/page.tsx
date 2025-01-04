@@ -68,14 +68,7 @@ const mockFolders: Folder[] = [
     name: 'Notes',
     type: 'Notes',
     items: [
-      {
-        id: '1',
-        name: 'Chapter 1 Notes',
-        description: 'Introduction to the subject',
-        type: 'pdf',
-        url: '#',
-        createdAt: '2024-03-20'
-      }
+
     ]
   },
   {

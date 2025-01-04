@@ -52,6 +52,22 @@ const ALLOWED_ATTACHMENTS = [
   { type: 'text/*', icon: File, label: 'Document' },
 ]
 
+function SessionGuard({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
+
+  // Don't render anything while checking authentication
+  if (status === 'loading') {
+    return null
+  }
+
+  // Only render if we have a valid session with an access token
+  if (!session?.user?.accessToken) {
+    return null
+  }
+
+  return <>{children}</>
+}
+
 export function FAB() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -67,19 +83,7 @@ export function FAB() {
   const [isRecording, setIsRecording] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  const { data: session, status } = useSession()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
-  // Don't render anything while checking authentication
-  if (status === 'loading') {
-    return null
-  }
-
-  // Only render if we have a valid session with an access token
-  if (!session?.user?.accessToken) {
-    return null
-  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -236,7 +240,7 @@ export function FAB() {
   }
 
   return (
-    <>
+    <SessionGuard>
       {/* Full screen chat overlay */}
       <div
         className={cn(
@@ -404,6 +408,6 @@ export function FAB() {
           <span className="sr-only">Open chat</span>
         </Button>
       </div>
-    </>
+    </SessionGuard>
   )
 } 

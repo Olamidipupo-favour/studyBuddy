@@ -18,6 +18,7 @@ export async function POST(
     }
 
     const formData = await request.formData()
+    console.log(formData)
     const response = await fetch(`${backendUrl}/subjects/${params.id}/folders/${params.folderId}/resources`, {
       method: 'POST',
       headers: {
@@ -26,6 +27,7 @@ export async function POST(
       body: formData
     })
 
+    console.log(response)
     if (!response.ok) {
       throw new Error(`Backend returned ${response.status}`)
     }
