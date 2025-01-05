@@ -16,7 +16,7 @@ export async function DELETE(
         { status: 401 }
       )
     }
-
+console.log(process.env.NEXT_PUBLIC_API_URL)
     const response = await fetch(`${backendUrl}/subjects/${params.id}/folders/${params.folderId}`, {
       method: 'DELETE',
       headers: {

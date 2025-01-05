@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, BookOpen, Clock, Target, FolderPlus, File, Plus, Book, PenTool, History, Trash2 } from "lucide-react"
+import { ArrowLeft, BookOpen, Clock, Target, FolderPlus, File, Plus, Book, PenTool, History, Trash2, ArrowDown } from "lucide-react"
 import Link from "next/link"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useEffect, useState } from "react"
@@ -30,7 +30,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Progress } from "@/components/ui/progress"
+import { backendUrl
 
+ } from "@/lib/config"
 type Subject = {
   id: string
   name: string
@@ -110,6 +113,10 @@ export default function SubjectDetailsPage() {
     dueDate: ""
   })
   const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null)
+  const [resourceToDelete, setResourceToDelete] = useState<{ folderId: string; resource: Resource } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isLoadingFolders, setIsLoadingFolders] = useState(true)
 
   useEffect(() => {
     const fetchSubject = async () => {
@@ -137,6 +144,7 @@ export default function SubjectDetailsPage() {
 
   useEffect(() => {
     const fetchFolders = async () => {
+      setIsLoadingFolders(true)
       try {
         const response = await fetch(`/api/subjects/${params.id}/folders`)
         if (!response.ok) {
@@ -151,6 +159,8 @@ export default function SubjectDetailsPage() {
           description: "Failed to load folders",
           variant: "destructive"
         })
+      } finally {
+        setIsLoadingFolders(false)
       }
     }
 
@@ -168,36 +178,63 @@ export default function SubjectDetailsPage() {
   }
 
   const handleAddResource = async () => {
-    if (!newResource.name || !newResource.description || !selectedFolder) {
+    if (!newResource.name || !newResource.description || !selectedFolder || !newResource.file) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields and select a file",
         variant: "destructive"
       })
       return
     }
 
+    setIsUploading(true)
+    setUploadProgress(0)
+
     try {
       const formData = new FormData()
       formData.append('name', newResource.name)
       formData.append('description', newResource.description)
-      if (newResource.file) {
-        formData.append('file', newResource.file)
-      }
+      formData.append('file', newResource.file)
 
-      const response = await fetch(`/api/subjects/${params.id}/folders/${selectedFolder.id}/resources`, {
-        method: 'POST',
-        body: formData
+      const xhr = new XMLHttpRequest()
+      
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded * 100) / event.total)
+          setUploadProgress(progress)
+        }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to add resource')
-      }
+      // Create a promise to handle the XHR request
+      const response = await new Promise((resolve, reject) => {
+        xhr.open('POST', `/api/subjects/${params.id}/folders/${selectedFolder.id}/resources`)
+        
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(new Response(xhr.response, {
+              status: xhr.status,
+              statusText: xhr.statusText,
+            }))
+          } else {
+            reject(new Error(`HTTP ${xhr.status} - ${xhr.statusText}`))
+          }
+        }
+        
+        xhr.onerror = () => reject(new Error('Network error'))
+        xhr.send(formData)
+      })
 
-      const data = await response.json()
+      // Type assertion since we know it's a Response object
+      const data = await (response as Response).json()
+      
+      // Update the folders state with the new resource
       setFolders(prev => prev.map(folder => 
         folder.id === selectedFolder.id 
-          ? { ...folder, items: [...folder.items, data.resource] }
+          ? { 
+              ...folder, 
+              items: [...folder.items, data.resource]
+            }
           : folder
       ))
 
@@ -210,11 +247,15 @@ export default function SubjectDetailsPage() {
         description: "Resource added successfully"
       })
     } catch (error) {
+      console.error('Upload error:', error)
       toast({
         title: "Error",
-        description: "Failed to add resource",
+        description: error instanceof Error ? error.message : "Failed to add resource",
         variant: "destructive"
       })
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -334,6 +375,40 @@ export default function SubjectDetailsPage() {
     }
   }
 
+  const handleDeleteResource = async (folderId: string, resourceId: string) => {
+    try {
+      const response = await fetch(`/api/subjects/${params.id}/folders/${folderId}/resources/${resourceId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to delete resource')
+      }
+
+      setFolders(prev => prev.map(folder => 
+        folder.id === folderId 
+          ? { 
+              ...folder, 
+              items: folder.items.filter(item => item.id !== resourceId)
+            }
+          : folder
+      ))
+
+      toast({
+        title: "Success",
+        description: "Resource deleted successfully"
+      })
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete resource",
+        variant: "destructive"
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -371,38 +446,63 @@ export default function SubjectDetailsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="resource-name">Resource Name</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
-                id="resource-name"
+                id="name"
                 value={newResource.name}
                 onChange={(e) => setNewResource(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Chapter 1 Notes"
+                disabled={isUploading}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="resource-description">Description</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
-                id="resource-description"
+                id="description"
                 value={newResource.description}
                 onChange={(e) => setNewResource(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of the resource..."
+                disabled={isUploading}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="resource-file">File</Label>
+              <Label htmlFor="folder">Folder</Label>
+              <select
+                id="folder"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={selectedFolder?.id || ""}
+                onChange={(e) => setSelectedFolder(folders.find(f => f.id === e.target.value) || null)}
+                disabled={isUploading}
+              >
+                <option value="">Select a folder</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>{folder.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="file">File</Label>
               <Input
-                id="resource-file"
+                id="file"
                 type="file"
                 onChange={(e) => setNewResource(prev => ({ ...prev, file: e.target.files?.[0] || null }))}
+                disabled={isUploading}
               />
             </div>
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Uploading...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="w-full" />
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewResourceModal(false)}>
+            <Button variant="outline" onClick={() => setShowNewResourceModal(false)} disabled={isUploading}>
               Cancel
             </Button>
-            <Button onClick={handleAddResource}>
-              Add Resource
+            <Button onClick={handleAddResource} disabled={isUploading}>
+              {isUploading ? "Uploading..." : "Add Resource"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -514,6 +614,32 @@ export default function SubjectDetailsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Delete Resource Alert Dialog */}
+      <AlertDialog open={!!resourceToDelete} onOpenChange={() => setResourceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{resourceToDelete?.resource.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => {
+                if (resourceToDelete) {
+                  handleDeleteResource(resourceToDelete.folderId, resourceToDelete.resource.id);
+                  setResourceToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="mb-8 flex items-center justify-between">
         <div>
           <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center mb-2">
@@ -613,58 +739,105 @@ export default function SubjectDetailsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue={folders[0]?.type} className="w-full">
-          <TabsList className="flex-wrap">
-            {folders.map(folder => (
-              <div key={folder.id} className="flex items-center">
-                <TabsTrigger value={folder.type} className="rounded-r-none">
+        {isLoadingFolders ? (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <LoadingSpinner size={30} />
+          </div>
+        ) : (
+          <Tabs defaultValue={folders[0]?.id} className="w-full">
+            <TabsList className="w-full justify-start">
+              {folders.map((folder) => (
+                <TabsTrigger key={folder.id} value={folder.id} className="flex items-center">
                   {folder.name}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-2 h-6 w-6 p-0 hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFolderToDelete(folder)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TabsTrigger>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-l-none border-l-0 px-2 hover:bg-red-100 hover:text-red-600"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setFolderToDelete(folder)
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </TabsList>
-
-          {folders.map(folder => (
-            <TabsContent key={folder.id} value={folder.type} className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {folder.items.map(item => (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <CardTitle className="text-lg">{item.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        Added on {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                <Card 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer aspect-square flex items-center justify-center group"
+              ))}
+            </TabsList>
+            {folders.map((folder) => (
+              <TabsContent key={folder.id} value={folder.id}>
+                {folder.items.length === 0 ? (
+                  <>
+                  <div className="text-center py-8 text-muted-foreground">
+                    No resources in this folder yet.
+                  </div>
+                  
+                  <Card 
+                  className="hover:bg-secondary transition-colors cursor-pointer flex items-center justify-center min-h-[200px]"
                   onClick={() => {
                     setSelectedFolder(folder)
                     setShowNewResourceModal(true)
                   }}
                 >
-                  <Plus className="h-12 w-12 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+                  <Plus className="h-12 w-12 text-muted-foreground" />
                 </Card>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {folder.items.map((resource) => (
+                      <Card key={resource.id} className="hover:shadow-lg transition-shadow">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg">{resource.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground">{resource.description}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setResourceToDelete({ folderId: folder.id, resource });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">
+                              Added on {new Date(resource.createdAt).toLocaleDateString()}
+                            </span>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              asChild
+                            >
+                              <a href={`${backendUrl}${resource.url}`} download target="_blank" rel="noopener noreferrer">
+                                <ArrowDown className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    
+                    <Card 
+                      className="hover:bg-secondary transition-colors cursor-pointer flex items-center justify-center min-h-[200px]"
+                      onClick={() => {
+                        setSelectedFolder(folder)
+                        setShowNewResourceModal(true)
+                      }}
+                    >
+                      <Plus className="h-12 w-12 text-muted-foreground" />
+                    </Card>
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </div>
     </div>
   )

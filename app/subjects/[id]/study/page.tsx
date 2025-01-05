@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, BookOpen, Clock, File, Folder } from "lucide-react"
-import Link from "next/link"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { ArrowLeft, Book, Clock, Folder } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import Link from "next/link"
+import { backendUrl } from "@/lib/config"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type Resource = {
@@ -19,6 +20,14 @@ type Resource = {
   createdAt: string
 }
 
+type Subject = {
+  id: string
+  name: string
+  description: string
+  lastStudied?: string
+  totalStudyTime?: number
+}
+
 type Folder = {
   id: string
   name: string
@@ -26,56 +35,59 @@ type Folder = {
   items: Resource[]
 }
 
-const mockFolders: Folder[] = [
-  {
-    id: '1',
-    name: 'Notes',
-    type: 'Notes',
-    items: [
-      {
-        id: '1',
-        name: 'Chapter 1 Notes',
-        description: 'Introduction to the subject',
-        type: 'pdf',
-        url: '#',
-        createdAt: '2024-03-20'
-      }
-    ]
-  },
-  {
-    id: '2',
-    name: 'References',
-    type: 'References',
-    items: []
-  },
-  {
-    id: '3',
-    name: 'Past Questions',
-    type: 'PastQuestions',
-    items: []
-  }
-]
-
 export default function StudyPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
-  const [folders, setFolders] = useState<Folder[]>(mockFolders)
-  const [studyTime, setStudyTime] = useState(0)
-  const [isStudying, setIsStudying] = useState(false)
+  const [subject, setSubject] = useState<Subject | null>(null)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [studyStartTime, setStudyStartTime] = useState<Date | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate API call to fetch folders
-    const fetchFolders = async () => {
+    const fetchData = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setFolders(mockFolders)
+        console.log('Fetching subject and folders data...')
+        
+        // Fetch subject details
+        const subjectResponse = await fetch(`/api/subjects/${params.id}`)
+        const subjectData = await subjectResponse.json()
+        console.log('Subject response:', subjectData)
+
+        if (!subjectResponse.ok) {
+          throw new Error(subjectData.error || 'Failed to fetch subject')
+        }
+
+        if (!subjectData.subject) {
+          throw new Error('Invalid subject data received')
+        }
+
+        setSubject(subjectData.subject)
+
+        // Fetch all resources from all folders
+        const foldersResponse = await fetch(`/api/subjects/${params.id}/folders`)
+        const foldersData = await foldersResponse.json()
+        console.log('Folders response:', foldersData)
+
+        if (!foldersResponse.ok) {
+          throw new Error(foldersData.error || 'Failed to fetch resources')
+        }
+
+        if (!foldersData.folders || !Array.isArray(foldersData.folders)) {
+          throw new Error('Invalid folders data received')
+        }
+
+        setFolders(foldersData.folders)
+        setError(null)
       } catch (error) {
-        console.error("Failed to fetch folders:", error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load study materials'
+        console.error("Failed to fetch study data:", error)
+        setError(errorMessage)
         toast({
           title: "Error",
-          description: "Failed to load study materials",
+          description: errorMessage,
           variant: "destructive"
         })
       } finally {
@@ -83,64 +95,146 @@ export default function StudyPage() {
       }
     }
 
-    fetchFolders()
-  }, [toast])
+    fetchData()
+  }, [params.id, toast])
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
+    // Only start tracking time if we have successfully loaded the data
+    if (!isLoading && !error && subject) {
+      console.log('Starting study session tracking...')
+      setStudyStartTime(new Date())
 
-    if (isStudying) {
-      interval = setInterval(() => {
-        setStudyTime(prev => prev + 1)
+      // Update elapsed time every second
+      const timer = setInterval(() => {
+        if (studyStartTime) {
+          const now = new Date()
+          setElapsedTime(Math.floor((now.getTime() - studyStartTime.getTime()) / 1000))
+        }
       }, 1000)
-    }
 
-    return () => {
-      if (interval) {
-        clearInterval(interval)
+      // Send study session data when component unmounts
+      return () => {
+        clearInterval(timer)
+        if (studyStartTime) {
+          const endTime = new Date()
+          const duration = Math.round((endTime.getTime() - studyStartTime.getTime()) / 1000)
+          
+          console.log('Saving study session...', {
+            startTime: studyStartTime.toISOString(),
+            endTime: endTime.toISOString(),
+            duration
+          })
+
+          // Send study session data to backend
+          fetch(`/api/subjects/${params.id}/study-sessions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              startTime: studyStartTime.toISOString(),
+              endTime: endTime.toISOString(),
+              duration
+            })
+          }).then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to save study session')
+            }
+            return response.json()
+          }).then(data => {
+            console.log('Study session saved:', data)
+          }).catch(error => {
+            console.error("Failed to save study session:", error)
+            toast({
+              title: "Warning",
+              description: "Failed to save study session. Your progress may not be tracked.",
+              variant: "destructive"
+            })
+          })
+        }
       }
     }
-  }, [isStudying])
+  }, [params.id, studyStartTime, isLoading, error, subject, toast])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const remainingSeconds = seconds % 60
-
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
-
-  const handleResourceClick = (resource: Resource) => {
-    // Here you would typically handle opening/downloading the resource
-    toast({
-      title: "Opening Resource",
-      description: `Opening ${resource.name}...`
-    })
-  }
-
-  const handleEndStudy = async () => {
-    setIsStudying(false)
-    try {
-      // Simulate API call to save study session
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast({
-        title: "Study Session Ended",
-        description: `You studied for ${formatTime(studyTime)}`,
-      })
-      router.push(`/subjects/${params.id}`)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save study session",
-        variant: "destructive"
-      })
-    }
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size={40} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Link href={`/subjects/${params.id}`} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center mb-2">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Subject
+          </Link>
+          <h1 className="text-3xl font-bold">Study Session</h1>
+        </div>
+        <Card>
+          <CardContent className="py-16">
+            <div className="text-center">
+              <p className="text-lg text-destructive">{error}</p>
+              <Button className="mt-4" variant="outline" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!subject) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Subject Not Found</h1>
+          <Link href="/dashboard">
+            <Button>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (folders.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Link href={`/subjects/${params.id}`} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center mb-2">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Subject
+          </Link>
+          <h1 className="text-3xl font-bold">{subject.name} - Study Session</h1>
+          <p className="text-muted-foreground mt-1">{subject.description}</p>
+        </div>
+        <Card>
+          <CardContent className="py-16">
+            <div className="text-center">
+              <p className="text-lg text-muted-foreground">No study materials available.</p>
+              <p className="text-sm text-muted-foreground mt-2">Add some resources to start studying!</p>
+              <Button className="mt-4" asChild>
+                <Link href={`/subjects/${params.id}`}>
+                  Add Resources
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -152,70 +246,56 @@ export default function StudyPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Subject
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Study Session</h1>
-            <p className="text-muted-foreground mt-1">Access your study materials</p>
+            <h1 className="text-3xl font-bold">{subject.name} - Study Session</h1>
+            <p className="text-muted-foreground mt-1">{subject.description}</p>
           </div>
-          <div className="flex items-center gap-4">
-            <Card className="bg-muted">
-              <CardContent className="py-2 px-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span className="font-mono">{formatTime(studyTime)}</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Button
-              variant={isStudying ? "destructive" : "default"}
-              onClick={() => isStudying ? handleEndStudy() : setIsStudying(true)}
-            >
-              {isStudying ? "End Session" : "Start Session"}
-            </Button>
-          </div>
+          <Card className="w-fit">
+            <CardContent className="py-4 px-6">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xl font-mono">{formatTime(elapsedTime)}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      <Tabs defaultValue="Notes" className="w-full">
-        <TabsList>
-          <TabsTrigger value="Notes">Notes</TabsTrigger>
-          <TabsTrigger value="References">References</TabsTrigger>
-          <TabsTrigger value="PastQuestions">Past Questions</TabsTrigger>
+      <Tabs defaultValue={folders[0]?.id} className="w-full">
+        <TabsList className="w-full justify-start">
+          {folders.map((folder) => (
+            <TabsTrigger key={folder.id} value={folder.id} className="flex items-center gap-2">
+              <Folder className="h-4 w-4" />
+              {folder.name}
+            </TabsTrigger>
+          ))}
         </TabsList>
-
-        {folders.map(folder => (
-          <TabsContent key={folder.id} value={folder.type} className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {folder.items.length === 0 ? (
-                <Card className="col-span-full p-8">
-                  <div className="text-center text-muted-foreground">
-                    <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">No Items Yet</h3>
-                    <p>Add some study materials to get started</p>
-                  </div>
+        {folders.map((folder) => (
+          <TabsContent key={folder.id} value={folder.id}>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {folder.items.map((resource) => (
+                <Card key={resource.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{resource.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{resource.description}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground flex items-center">
+                        <Clock className="mr-2 h-4 w-4" />
+                        Added {new Date(resource.createdAt).toLocaleDateString()}
+                      </span>
+                      <Button size="sm" asChild>
+                        <a href={`${backendUrl}${resource.url}`} target="_blank" rel="noopener noreferrer">
+                          <Book className="mr-2 h-4 w-4" />
+                          Study
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
                 </Card>
-              ) : (
-                folder.items.map(item => (
-                  <Card
-                    key={item.id}
-                    className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleResourceClick(item)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <File className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle className="text-lg">{item.name}</CardTitle>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        Added on {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+              ))}
             </div>
           </TabsContent>
         ))}
