@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StudyBuddy
 
-## Getting Started
+Study workspace front end: subjects, folders, notes, quizzes, summaries, progress,
+and a study chat. Built with the Next.js App Router and wired to the StudyBuddy
+Flask API.
 
-First, run the development server:
+## Stack
 
-```bash
+| Layer    | Tech                                                       |
+| -------- | ---------------------------------------------------------- |
+| Framework | Next.js 14 (App Router) · React 18 · TypeScript           |
+| UI       | Tailwind CSS · Radix UI · shadcn/ui · Framer Motion · Recharts |
+| State    | Zustand · React Hook Form · Zod                            |
+| Auth     | NextAuth                                                   |
+| Icons    | Lucide                                                     |
+
+## Screens
+
+- Landing, features, pricing, about, and contact pages
+- Login and signup
+- Student dashboard and admin dashboard
+- Subjects list and subject detail
+- Study chat
+- Server routes for chat, quotes, and subjects
+
+## Local setup
+
+```sh
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Purpose |
+| -------- | ------- |
+| `NEXT_PUBLIC_API_URL` | Base URL of the Flask API |
+| `NEXT_PUBLIC_USE_MOCK_AUTH` | Set to `true` to use the mock auth helper |
+| `BACKEND_URL` | Server-side backend URL for the avatar route |
 
-## Learn More
+Keep local values in `.env.local`. It is git-ignored.
 
-To learn more about Next.js, take a look at the following resources:
+## Related
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The API lives in [studyBuddyBackend](https://github.com/Olamidipupo-favour/studyBuddyBackend).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Some views still read from mock data while the backend integration is finished.
